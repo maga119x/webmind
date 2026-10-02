@@ -10,7 +10,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: bash -n deploy/*.sh
+      - run: for script in deploy/*.sh; do bash -n "$script"; done
       - run: npm run build
       - run: npm test
       - run: npx playwright install --with-deps chromium firefox webkit
