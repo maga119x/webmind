@@ -1,0 +1,15 @@
+[Unit]
+Description=Finish initial WebMind HTTPS deployment after DNS propagation
+After=network-online.target nginx.service webmind.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/webmind-finish-https
+TimeoutStartSec=180
+Nice=10
+MemoryMax=192M
+CPUQuota=25%
+PrivateTmp=true
+ProtectHome=true
+UMask=0077

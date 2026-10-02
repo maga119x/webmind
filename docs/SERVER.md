@@ -32,7 +32,15 @@ sudo nano /etc/webmind/webmind.env
 # AUTH_SECRET은 설치 시 생성한 값을 유지
 ```
 
-호스팅케이알의 `danho.kr` DNS 관리에서 A 레코드 `webmind`를 서버 IP에 연결합니다. 기존 네임서버나 다른 레코드를 변경할 필요가 없습니다. DNS 전파 후:
+호스팅케이알의 **나의 서비스 → 도메인 관리 → danho.kr → 네임서버/DNS → 새 DNS 레코드 추가**에서 다음 값을 설정합니다. 기존 네임서버와 다른 레코드는 유지합니다.
+
+| 타입 | 호스트 | 값 | TTL |
+|---|---|---|---|
+| A | `webmind` | `13.124.18.202` | 300초 또는 기본값 |
+
+공식 안내: [호스팅케이알 A 레코드 등록하기](https://help.hosting.kr/hc/ko/articles/5451071915545).
+
+권한 네임서버와 공개 DNS에서 값이 확인되어도 인증 기관의 다른 지역에 이전 NXDOMAIN 응답이 잠시 남을 수 있습니다. 반복 발급으로 제한에 걸리지 않도록 `certbot certonly --dry-run`으로 먼저 검사합니다. DNS 전파 후:
 
 ```sh
 sudo certbot certonly --webroot -w /var/www/webmind-acme \
@@ -44,6 +52,14 @@ sudo install -m 755 /srv/webmind/current/deploy/renew-webmind.sh /etc/letsencryp
 ```
 
 인증서는 기존 Certbot 타이머로 갱신합니다. WebMind의 갱신 훅은 해당 인증서가 갱신된 경우에만 Nginx 설정을 검사하고 reload합니다.
+
+초기 DNS 전파가 지연될 때만 `webmind-https.timer`를 사용합니다. 첫 시도는 10분 후이며 이후 15분 간격으로 최대 4회 시도합니다. 성공하면 WebMind HTTPS 가상 호스트와 갱신 훅을 적용하고 타이머를 비활성화합니다. 마지막 시도까지 실패해도 타이머를 중단하여 무한 발급을 방지합니다. 이 타이머는 일반 인증서 갱신용이 아닙니다.
+
+```sh
+systemctl status webmind-https.timer --no-pager
+sudo journalctl -u webmind-https.service --no-pager
+sudo cat /var/lib/webmind-tls/status
+```
 
 Google 연결을 사용하려면 [GOOGLE_DRIVE.md](GOOGLE_DRIVE.md)의 설정과 운영 콜백 두 개를 등록합니다.
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=Bounded initial WebMind certificate retries
+
+[Timer]
+OnActiveSec=10min
+OnUnitInactiveSec=15min
+AccuracySec=30s
+Unit=webmind-https.service
+
+[Install]
+WantedBy=timers.target
