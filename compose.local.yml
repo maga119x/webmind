@@ -1,0 +1,25 @@
+# Local Docker preview; production settings remain in compose.yml.
+services:
+  app:
+    image: webmind:local
+    build: .
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: 3000
+      APP_URL: http://localhost:3000
+      DATA_DIR: /data
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - webmind-local-data:/data
+    mem_limit: 320m
+    cpus: 0.8
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  webmind-local-data:
