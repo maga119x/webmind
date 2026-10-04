@@ -14,7 +14,7 @@
    ```
 
 4. 운영 도메인에서도 HTTPS origin과 위 두 콜백 경로를 등록합니다. `APP_URL`은 브라우저가 보는 origin과 같아야 합니다. API 서버 포트 3000을 개발 콜백으로 등록하지 않습니다.
-5. Picker용 API 키를 만들고 허용 HTTP referrer를 개발/운영 origin으로 제한합니다. API 제한에는 Google Picker API를 지정합니다. 숫자로 된 **프로젝트 번호**도 확인합니다.
+5. Picker용 API 키를 만들고 허용 HTTP referrer를 운영 origin과 Picker 프레임으로 제한합니다. 운영 키에는 `https://webmind.danho.kr/*`, `https://docs.google.com/*`를 등록하고, API 제한에는 **Google Picker API와 Google Drive API**만 지정합니다. 이는 2026-09-03 갱신된 [공식 Picker 설정](https://developers.google.com/workspace/drive/picker/guides/web-picker-sample)의 요건입니다. 개발 환경은 별도 프로젝트/키를 권장하며 그 키에만 localhost를 허용합니다. 숫자로 된 **프로젝트 번호**도 확인합니다.
 6. `.env.example`을 `.env`로 복사하고 다음 값을 설정한 뒤 개발 서버를 재시작합니다. `VITE_` 접두사는 사용하지 않습니다.
 
    ```dotenv
@@ -33,6 +33,16 @@ Google 로그인은 기본 계정 정보만 요청합니다. **내 마인드맵 
 SMTP 준비 전 운영하려면 `EMAIL_AUTH_ENABLED=false`로 이메일 가입·로그인·재설정을 비활성화합니다. 이 모드에서 Google 설정까지 비어 있으면 로컬 편집만 제공하며, 운영 메일을 개발용 파일에 쓰지 않습니다. SMTP 설정 후 `true`로 전환하고 재시작하면 이메일 기능이 활성화됩니다.
 
 `drive.file`은 앱이 만든 파일과 사용자가 Picker로 선택한 파일을 대상으로 합니다. 폴더를 골라도 그 안의 기존 파일 전체를 읽을 수 있다고 가정하지 않습니다. [Google 권한 안내](https://developers.google.com/workspace/drive/api/guides/api-specific-auth), [Picker 설정](https://developers.google.com/workspace/drive/picker/guides/overview)을 참고하세요.
+
+## 운영 서버에 자격 증명 입력
+
+Lightsail에는 `deploy/configure-google.py`를 `/srv/webmind/configure-google.py`로 설치했습니다. Windows PowerShell에서 아래 명령을 실행하면 OAuth 클라이언트 ID, 클라이언트 보안 비밀번호, Picker 키를 숨김 입력으로 받습니다. 기존 설정을 보호된 파일로 백업하고 Google 항목만 교체한 뒤 WebMind를 재시작합니다. 상태 검사에 실패하면 기존 설정을 복구합니다.
+
+```powershell
+ssh -t -i "C:\Users\HEYLIN\.ssh\lightsail-ubuntu-ed25519" ubuntu@13.124.18.202 "sudo python3 /srv/webmind/configure-google.py --project-number 185453382363"
+```
+
+키를 명령 인자나 저장소에 넣지 않습니다. 도구의 상태 검사 성공은 Google 권한 검증을 뜻하지 않습니다. 브라우저에서 로그인·Drive 동의·저장·Picker 재열기를 확인해야 합니다. 웹사이트 제한이 적용된 Picker 키가 출처를 확인할 수 있도록 운영 응답은 `Referrer-Policy: strict-origin-when-cross-origin`을 사용합니다.
 
 ## 사용자 흐름
 

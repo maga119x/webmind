@@ -2,6 +2,15 @@
 
 검증 환경: Windows Node.js 24.19.0, GitHub Actions Ubuntu Node.js 24, 운영 Ubuntu 24.04 Node.js 24.18.1. 최신 검사: 2026-10-04. 아래 이전 기록은 해당 날짜의 결과입니다.
 
+## 운영 Google 로그인·Drive·Picker 확인 — 2026-10-04
+
+- 소유자가 자격 증명을 발급하고 대화형 설정 도구로 운영 서버에 입력했습니다. `/api/config`의 Google 로그인·이메일 인증 활성화와 서비스 정상 상태를 확인했습니다.
+- Chrome에서 실제 Google 로그인 성공. 테스트 사용자 누락으로 Drive 동의가 차단되는 문제를 수정하고, 소유자가 직접 Drive 권한에 동의한 뒤 연결 성공.
+- 실제 `.mm` 생성, 제목·노드 편집, 충돌 복사본 저장, 보호 모드의 변경본 저장을 확인했습니다. 초기 편집의 충돌 안내 원인은 확정하지 않았습니다. 이후 별도 문서의 연속 수정은 200 응답으로 완료됐습니다. 다중 기기 충돌 전체 검증은 아닙니다.
+- Picker 오류를 재현하고 요청 출처가 `Referrer-Policy: same-origin`으로 누락되는 것을 확인했습니다. `strict-origin-when-cross-origin`으로 변경해 기존 키 제한을 유지하면서 Picker 표시·검색·재열기를 성공했습니다. `/api/drive/open`은 200이며 노드 내용이 일치했습니다. 새로고침 후에도 세션·문서 내용이 유지됐습니다.
+- production 회귀 검사 2개 통과. 서버 코드 `cfdd76d`를 기존 정적 파일·의존성과 함께 `/srv/webmind/releases/20261004-picker-referrer`에 배포했습니다. 이전 릴리스 `20261002-d6709e4`와 SMTP·환경 파일을 보존했습니다.
+- **남은 항목:** OAuth는 테스트 상태이며 공개 홈페이지·개인정보처리방침 연결과 공개 전환은 미완료입니다. 실제 조건부 갱신 검사는 통과하지 않아 원본 보호 모드를 유지합니다. 원본 자동 갱신, 장기간 토큰 갱신/철회, 이미지 왕복, 외부 FreeMind 변경, 다중 기기 경쟁은 별도 검증 대상입니다.
+
 ## 운영 HTTPS·Resend SMTP 확인 — 2026-10-04
 
 - 초기 인증서 설정 작업이 성공했고 `https://webmind.danho.kr/api/health`에서 인증서 검증을 포함한 HTTPS 200 응답을 확인했습니다.
@@ -11,7 +20,7 @@
 - `webmind-production` 키를 **Sending access / danho.kr**로 제한하고 보호된 서버 환경 파일에 연결했습니다. `smtp.resend.com:465`의 TLS와 SMTP 인증이 성공했습니다.
 - `WebMind <webmind@danho.kr>`에서 사용자가 지정한 주소로 테스트 메일 1건을 발송했습니다. SMTP 수락 1건·거절 0건이며 Resend에서 **Delivered**를 확인했습니다.
 - `EMAIL_AUTH_ENABLED=true`를 적용하고 WebMind만 재시작했습니다. 운영 `/api/config`의 `emailAuthEnabled: true`, `/api/health`의 HTTPS 200 응답, 브라우저의 이메일 로그인 폼을 확인했습니다. 실계정 가입·인증 링크 클릭·비밀번호 재설정 전체 흐름은 이번 SMTP 검사에 포함하지 않았습니다.
-- Google OAuth는 여전히 미설정이며 별도의 실계정 검증이 필요합니다. 아래 2026-10-02의 SMTP·TLS 보류 상태는 이 기록으로 대체됩니다.
+- 이 SMTP 검사 시점에는 Google OAuth가 미설정이었습니다. 이후 Google 실계정 검증은 위 기록을 따릅니다. 아래 2026-10-02의 SMTP·TLS 보류 상태는 이 기록으로 대체됩니다.
 
 ## 개인 서버 배포 — 2026-10-02
 

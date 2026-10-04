@@ -17,3 +17,4 @@ test-results-drive/
 playwright-report/
 *.log
 .browser/
+__pycache__/
