@@ -156,7 +156,9 @@ export async function createApp(
   app.addHook("onSend", async (req, reply, payload) => {
     reply
       .header("X-Content-Type-Options", "nosniff")
-      .header("Referrer-Policy", "same-origin")
+      // Picker validates its website-restricted key against the embedding origin.
+      // Cross-origin requests must include the origin, without paths or queries.
+      .header("Referrer-Policy", "strict-origin-when-cross-origin")
       .header("X-Frame-Options", "DENY");
     if (req.url.startsWith("/api/")) reply.header("Cache-Control", "no-store");
     if (prod)

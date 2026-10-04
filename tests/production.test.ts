@@ -25,6 +25,9 @@ it("serves the production build with CSP and never exposes the development mailb
     const root = await app.app.inject("/");
     expect(root.statusCode).toBe(200);
     expect(root.body).toContain("WebMind");
+    expect(root.headers["referrer-policy"]).toBe(
+      "strict-origin-when-cross-origin",
+    );
   } finally {
     await app?.app.close();
     process.env = before;
