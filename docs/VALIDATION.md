@@ -1,6 +1,17 @@
 # 검증 기록
 
-검증 환경: Windows Node.js 24.19.0, GitHub Actions Ubuntu Node.js 24, 운영 Ubuntu 24.04 Node.js 24.18.1. 최신 검사: 2026-10-02. 아래 이전 기록은 해당 날짜의 결과입니다.
+검증 환경: Windows Node.js 24.19.0, GitHub Actions Ubuntu Node.js 24, 운영 Ubuntu 24.04 Node.js 24.18.1. 최신 검사: 2026-10-04. 아래 이전 기록은 해당 날짜의 결과입니다.
+
+## 운영 HTTPS·Resend SMTP 확인 — 2026-10-04
+
+- 초기 인증서 설정 작업이 성공했고 `https://webmind.danho.kr/api/health`에서 인증서 검증을 포함한 HTTPS 200 응답을 확인했습니다.
+- `webmind` 서비스가 실행 중이며 초기 HTTPS 재시도 타이머는 성공 후 비활성화됐습니다. 일반 인증서 갱신은 Certbot이 담당합니다.
+- 기존 두 서비스의 HTTPS 200 응답을 다시 확인했습니다.
+- HostingKR에 Resend가 지정한 DKIM TXT와 발송용 CNAME 2개를 추가했습니다. 기존 네임서버와 10개 DNS 레코드를 유지했고, 권한 네임서버와 공개 DNS에서 값을 확인한 뒤 Resend의 `danho.kr` 도메인 **Verified** 상태를 확인했습니다.
+- `webmind-production` 키를 **Sending access / danho.kr**로 제한하고 보호된 서버 환경 파일에 연결했습니다. `smtp.resend.com:465`의 TLS와 SMTP 인증이 성공했습니다.
+- `WebMind <webmind@danho.kr>`에서 사용자가 지정한 주소로 테스트 메일 1건을 발송했습니다. SMTP 수락 1건·거절 0건이며 Resend에서 **Delivered**를 확인했습니다.
+- `EMAIL_AUTH_ENABLED=true`를 적용하고 WebMind만 재시작했습니다. 운영 `/api/config`의 `emailAuthEnabled: true`, `/api/health`의 HTTPS 200 응답, 브라우저의 이메일 로그인 폼을 확인했습니다. 실계정 가입·인증 링크 클릭·비밀번호 재설정 전체 흐름은 이번 SMTP 검사에 포함하지 않았습니다.
+- Google OAuth는 여전히 미설정이며 별도의 실계정 검증이 필요합니다. 아래 2026-10-02의 SMTP·TLS 보류 상태는 이 기록으로 대체됩니다.
 
 ## 개인 서버 배포 — 2026-10-02
 
@@ -89,7 +100,7 @@ Windows 개발 프로세스에서 이전 SQLite 본문 저장 방식을 측정�
 
 - Docker 이미지 빌드·컨테이너 구동·512MB 제한에서의 부하 검사. Docker 엔진이 실행되지 않은 상태였고, Docker Desktop 시작을 포함한 명령이 자동 승인 검토에서 정책상 차단되었습니다. 구체적인 차단 사유는 제공되지 않았습니다.
 - 최종 빌드 후 `APP_URL=http://localhost:3000`을 지정한 `npm start` 명령도 자동 승인 검토에서 차단되어 상시 미리보기 프로세스로 유지하지 못했습니다. 개발 서버와 테스트 서버를 통한 앞선 브라우저 검증은 실제로 수행했습니다.
-- 당시에는 실제 Lightsail 배포, 도메인 TLS, 외부 SMTP 배달을 실행하지 않았습니다. 현재 서버 배포 결과와 TLS 진행 상태는 위의 2026-10-02 기록을 따릅니다. SMTP 배달은 여전히 미검증입니다.
+- 당시에는 실제 Lightsail 배포, 도메인 TLS, 외부 SMTP 배달을 실행하지 않았습니다. 이후 서버 배포와 HTTPS·SMTP 배달을 검증했으며 위의 2026-10-02, 2026-10-04 기록을 따릅니다.
 - 실제 모바일 기기의 터치·키보드, 실제 Safari 앱, 물리 프린터 또는 PDF 인쇄 대화상자의 출력 검수.
 - 원본 FreeMind GUI에서의 최종 시각 비교.
 

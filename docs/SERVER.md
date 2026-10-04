@@ -20,6 +20,27 @@ Ubuntu 24.04의 기존 Nginx와 Node.js 24를 사용합니다. WebMind만 전용
 
 초기 배포는 `EMAIL_AUTH_ENABLED=false`로 이메일 가입/로그인/재설정을 차단합니다. 로컬 편집·저장·다운로드는 사용할 수 있습니다. SMTP 준비 후 환경 파일에 SMTP 값과 발신 주소를 넣고 `EMAIL_AUTH_ENABLED=true`로 변경한 뒤 WebMind만 재시작합니다. Google 인증은 별도 설정이며 이메일 로그인 활성화 여부와 독립적입니다.
 
+## Resend SMTP
+
+2026-10-04 기준 도메인 인증과 실제 SMTP 배달을 확인했고 운영 이메일 인증을 활성화했습니다. 현재 키 이름은 `webmind-production`입니다.
+
+여러 서비스의 공통 발신 도메인으로 `danho.kr`을 사용합니다. WebMind의 발신 주소는 `WebMind <webmind@danho.kr>`이며 다른 서비스는 각각 별도의 주소와 API 키를 사용합니다. 키 권한은 **Sending access**, 도메인은 **danho.kr**로 제한합니다.
+
+`/etc/webmind/webmind.env`에서 사용하는 설정입니다. API 키는 서버 파일에만 보관하고 저장소나 로그에 기록하지 않습니다.
+
+```dotenv
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=resend
+SMTP_PASS=<WebMind 전용 Resend API 키>
+MAIL_FROM="WebMind <webmind@danho.kr>"
+```
+
+도메인 인증과 SMTP 연결·테스트 발송을 확인한 후 `EMAIL_AUTH_ENABLED=true`로 설정하고 `sudo systemctl restart webmind`를 실행합니다. `https://webmind.danho.kr/api/config`의 `emailAuthEnabled` 값과 가입 화면을 확인합니다. 도메인 인증으로 수신용 편지함이 자동 생성되지는 않습니다.
+
+DNS는 Resend 도메인 화면에 표시된 레코드를 사용합니다. 2026-10-04 도쿄 지역 설정은 `resend._domainkey` TXT와 `rsend`/`send` CNAME을 요구했습니다. 기존 서비스의 DNS나 루트 도메인의 수신용 MX를 덮어쓰지 않습니다. [Resend SMTP 문서](https://resend.com/docs/send-with-smtp)
+
 ## 최초 설치
 
 로컬에서 `npm ci`, `npm test`, `npm run build`를 실행합니다. `dist`, `package.json`, `package-lock.json`, 라이선스와 `deploy`를 Linux 서버의 새 릴리스 디렉터리로 전달합니다. Windows의 `node_modules`, `.env`, 개발 DB는 보내지 않습니다. 서버에서는 해당 릴리스에 `npm ci --omit=dev --no-audit --no-fund`로 Linux용 실행 의존성만 설치합니다.
