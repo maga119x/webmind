@@ -273,6 +273,14 @@ export default function App() {
           WebMind<span className="brand-tag">SPACE FOR IDEAS</span>
         </a>
         <div className="header-actions">
+          <a
+            className="info-link"
+            href="/about.html"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t("소개", "About")}
+          </a>
           <button
             onClick={openLibrary}
             aria-label={t("내 마인드맵", "My maps")}
@@ -804,6 +812,11 @@ function AuthDialog({
             </button>
           </div>
         )}
+        <p className="privacy-link">
+          <a href="/privacy.html" target="_blank" rel="noopener noreferrer">
+            {t("개인정보처리방침", "Privacy policy")}
+          </a>
+        </p>
       </section>
     </div>
   );

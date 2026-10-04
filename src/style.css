@@ -144,8 +144,27 @@ kbd {
   align-items: center;
   gap: 14px;
 }
-.header-actions > button:first-child {
+.header-actions > button:first-of-type {
   color: #64766a;
+}
+.info-link {
+  color: var(--muted, #65746c);
+  font-size: 13px;
+  padding: 8px 4px;
+  text-decoration: none;
+}
+.info-link:hover,
+.privacy-link a:hover {
+  text-decoration: underline;
+}
+.privacy-link {
+  text-align: center;
+  font-size: 12px;
+  margin: 16px 0 0;
+}
+.privacy-link a {
+  color: #536b5c;
+  text-underline-offset: 3px;
 }
 .language {
   font-size: 12px;
@@ -1045,7 +1064,7 @@ kbd {
     height: 31px;
     border-radius: 9px;
   }
-  .header-actions > button:first-child span {
+  .header-actions > button:first-of-type span {
     display: none;
   }
   .header-actions .primary {
