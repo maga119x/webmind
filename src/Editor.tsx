@@ -596,7 +596,10 @@ export default function Editor({
     local: t("이 기기에 저장됨", "Saved on this device"),
     offline: t("연결 대기 · 기기에 보관됨", "Offline · saved on device"),
     session: t("세션 만료 · 다시 로그인", "Session expired · sign in"),
-    conflict: t("다른 기기의 변경사항이 있습니다", "Changes on another device"),
+    conflict: t(
+      "Drive 저장본이 변경되었습니다. 현재 작업은 이 기기에 보관 중입니다.",
+      "The Drive file changed. Your current work is kept on this device.",
+    ),
     quota: t("저장 용량 한도에 도달했습니다", "Storage limit reached"),
     "storage-error": t(
       "기기 저장 실패 · 파일을 내보내세요",
@@ -1430,7 +1433,19 @@ export default function Editor({
           <span>{statuses[status]}</span>
           {status === "conflict" && (
             <button
-              onClick={() => void latest().catch((e) => setMessage(e.message))}
+              onClick={() =>
+                void latest()
+                  .then((backup) => {
+                    if (backup)
+                      setMessage(
+                        t(
+                          `현재 작업은 내 마인드맵의 ‘${backup.title}’에 보관했습니다.`,
+                          `Your work is kept as ‘${backup.title}’ in My maps.`,
+                        ),
+                      );
+                  })
+                  .catch((e) => setMessage(e.message))
+              }
             >
               {t(
                 "최신본 열기 · 작업은 복구본 보관",

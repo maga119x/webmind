@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   StorageError,
   type DriveClient,
@@ -7,6 +7,7 @@ import {
 export class FakeDrive implements DriveClient {
   files = new Map<string, { meta: DriveFile; bytes: Buffer }>();
   enforceConditional = true;
+  exposeEtags = true;
   loseNextUpdate = false;
   beforeUpdate: (() => void) | undefined;
   async generateId() {
@@ -35,7 +36,9 @@ export class FakeDrive implements DriveClient {
   async stat(id: string) {
     const f = this.files.get(id);
     if (!f) throw new StorageError(404, "missing", "Missing");
-    return structuredClone(f.meta);
+    const meta = structuredClone(f.meta);
+    if (!this.exposeEtags) delete meta.etag;
+    return meta;
   }
   async bytes(id: string) {
     await this.stat(id);
@@ -51,6 +54,7 @@ export class FakeDrive implements DriveClient {
       version: "1",
       etag: '"1"',
       modifiedTime: new Date().toISOString(),
+      md5Checksum: createHash("md5").update(bytes).digest("hex"),
       ...meta,
     };
     this.files.set(id, { meta: f, bytes: Buffer.from(bytes) });
@@ -78,7 +82,10 @@ export class FakeDrive implements DriveClient {
       etag: `"${version}"`,
       modifiedTime: new Date().toISOString(),
     };
-    if (bytes) f.bytes = Buffer.from(bytes);
+    if (bytes) {
+      f.bytes = Buffer.from(bytes);
+      f.meta.md5Checksum = createHash("md5").update(bytes).digest("hex");
+    }
     if (this.loseNextUpdate) {
       this.loseNextUpdate = false;
       throw new StorageError(503, "drive_unavailable", "Response lost");

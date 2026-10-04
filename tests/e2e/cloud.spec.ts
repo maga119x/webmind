@@ -77,7 +77,7 @@ test("email signup, cloud autosave, offline retry, conflict copy, image duplicat
     ).status(),
   ).toBe(200);
   await title.fill("My conflict change");
-  await expect(page.getByRole("alert")).toContainText("다른 기기");
+  await expect(page.getByRole("alert")).toContainText("Drive 저장본");
   await page.getByRole("button", { name: "복사본 저장", exact: true }).click();
   await expect(title).toHaveValue("My conflict change 충돌 복사본");
   await expect(page.locator(".node-image")).toBeVisible();
@@ -162,10 +162,10 @@ test("two browser contexts preserve dirty changes, reload drafts and isolate gue
       "Google Drive 저장 완료",
     );
     await context.setOffline(false);
-    await expect(page.getByRole("alert")).toContainText("다른 기기");
+    await expect(page.getByRole("alert")).toContainText("Drive 저장본");
     await page.reload();
     await expect(title).toHaveValue("Offline unsynced draft");
-    await expect(page.getByRole("alert")).toContainText("다른 기기");
+    await expect(page.getByRole("alert")).toContainText("Drive 저장본");
     await page.getByRole("button", { name: /최신본 열기/ }).click();
     await expect(title).toHaveValue("Second browser latest");
     await page

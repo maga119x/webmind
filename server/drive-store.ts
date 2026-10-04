@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 import { createHash } from "node:crypto";
 import { importMM, exportMM } from "../shared/freemind";
+import { isLegacyDriveRevision } from "../shared/revision";
 import {
   validateMap,
   emptyMap,
@@ -45,7 +46,20 @@ export function validImage(b: Buffer, mime: string) {
             : false)
   );
 }
-const revision = (f: DriveFile) => JSON.stringify([f.version, f.etag ?? ""]);
+const legacyRevision = (f: DriveFile) =>
+  JSON.stringify([f.version, f.etag ?? ""]);
+// Drive's version also changes for invisible metadata updates. Only changes to
+// the document, its name or relative-image location are editing conflicts.
+const revision = (f: DriveFile) =>
+  f.md5Checksum
+    ? JSON.stringify([
+        "content-v1",
+        f.md5Checksum,
+        f.name,
+        f.mimeType,
+        f.parents ?? [],
+      ])
+    : legacyRevision(f);
 const title = (s: string) => s.replace(/\.mm$/i, "");
 const filename = (s: string) =>
   s.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").slice(0, 200) + ".mm";
@@ -206,7 +220,11 @@ export class DriveStore {
       first = await this.file(raw);
     const bytes = await this.client.bytes(raw),
       f = await this.file(raw);
-    if (first.version !== f.version)
+    if (
+      revision(first) !== revision(f) ||
+      (f.md5Checksum &&
+        createHash("md5").update(bytes).digest("hex") !== f.md5Checksum)
+    )
       throw new StorageError(
         409,
         "conflict",
@@ -482,7 +500,14 @@ export class DriveStore {
         );
       return result;
     }
-    if (revision(current) !== base)
+    // Old offline drafts have version-only tokens. If their base can no longer
+    // be established, preserve them in a new file; never rebase onto the original.
+    const oldBase = isLegacyDriveRevision(base);
+    if (
+      revision(current) !== base &&
+      legacyRevision(current) !== base &&
+      !(oldBase && (!this.connection.conditional || !current.etag))
+    )
       throw new StorageError(
         409,
         "conflict",
@@ -515,7 +540,7 @@ export class DriveStore {
       current.etag,
     );
     const result = await this.get(id);
-    if (JSON.parse(result.revision)[0] !== written.version)
+    if (result.revision !== revision(written))
       throw new StorageError(
         409,
         "conflict",

@@ -9,6 +9,7 @@ import {
   localize,
 } from "./local-store";
 import type { MapRecord, MindMap } from "../shared/model";
+import { isLegacyDriveRevision } from "../shared/revision";
 export type Draft = { record: MapRecord; dirty: boolean; time: number };
 const tabId = (() => {
   try {
@@ -30,7 +31,11 @@ export async function recover(
   record = normalizeRecord(record);
   try {
     const own = await get<Draft>(draftKey(user, record.id));
-    if (own?.dirty) return normalizeRecord(own.record);
+    if (own?.dirty)
+      return { ...normalizeRecord(own.record), recoveredDraft: true };
+    // This tab already settled its draft. Do not resurrect an older tab's work
+    // over an explicitly accepted/saved document; that draft remains in storage.
+    if (own) return record;
     const prefix = `webmind:${user}:${record.id}`;
     const candidates = (await keys()).filter(
       (k) =>
@@ -42,7 +47,7 @@ export async function recover(
     if (drafts[0]) {
       const d = { ...drafts[0], record: normalizeRecord(drafts[0].record) };
       await set(draftKey(user, record.id), d);
-      return d.record;
+      return { ...d.record, recoveredDraft: true };
     }
   } catch {}
   return record;
@@ -56,17 +61,21 @@ export function usePersistence(user: string, initial: MapRecord) {
         ? "local"
         : first.storage === "legacy"
           ? "readonly"
-          : "saved",
+          : first.recoveredDraft
+            ? "pending"
+            : "saved",
     );
   const state = useRef({
     record: first,
-    seq: 0,
+    seq: first.recoveredDraft && first.storage === "drive" ? 1 : 0,
     saved: 0,
     busy: false,
     alive: true,
     conflict: false,
     blocked: false,
     retry: 0,
+    epoch: 0,
+    check: 0,
     pending: null as null | { seq: number; record: MapRecord; id: string },
   });
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined),
@@ -97,6 +106,7 @@ export function usePersistence(user: string, initial: MapRecord) {
     )
       return;
     s.busy = true;
+    s.epoch++;
     const pending = s.pending ?? {
       seq: s.seq,
       record: structuredClone(s.record),
@@ -154,6 +164,9 @@ export function usePersistence(user: string, initial: MapRecord) {
       s.saved = pending.seq;
       s.pending = null;
       s.retry = 0;
+      // Publish the acknowledgement before IndexedDB awaits. Edits made while
+      // the local write settles must not be replaced by this older snapshot.
+      if (s.alive) setRecord(next);
       const stored = await persist(next, s.seq !== s.saved);
       if (r.id !== next.id)
         await set(draftKey(user, r.id), {
@@ -162,7 +175,6 @@ export function usePersistence(user: string, initial: MapRecord) {
           time: Date.now(),
         });
       if (s.alive) {
-        setRecord(next);
         setStatus(
           !stored
             ? "storage-error"
@@ -236,19 +248,40 @@ export function usePersistence(user: string, initial: MapRecord) {
   }
   async function checkRemote() {
     const s = state.current;
-    if (s.record.storage !== "drive" || s.busy || s.conflict) return;
+    if (s.record.storage !== "drive" || s.busy || s.conflict || s.pending)
+      return;
     const id = s.record.id,
-      seq = s.seq;
+      seq = s.seq,
+      base = s.record.revision,
+      epoch = s.epoch,
+      check = ++s.check;
+    const stale = () =>
+      !s.alive ||
+      s.record.id !== id ||
+      s.busy ||
+      s.epoch !== epoch ||
+      s.check !== check ||
+      s.record.revision !== base;
     try {
       const remote = await api<MapRecord>(`/api/maps/${id}`);
-      if (!s.alive || s.record.id !== id || s.busy) return;
+      if (stale()) return;
       if (remote.revision !== s.record.revision) {
         if (s.seq !== s.saved || s.pending) {
+          // Upgrade old dirty drafts through the server's copy-only fallback.
+          // Never label a revision-format upgrade as another device's edit.
+          if (
+            isLegacyDriveRevision(base) &&
+            !isLegacyDriveRevision(remote.revision)
+          ) {
+            void flush();
+            return;
+          }
           s.conflict = true;
           setStatus("conflict");
           return;
         }
         if (s.seq !== seq) return;
+        s.epoch++;
         s.record = remote;
         setRecord(remote);
         setRemoteEpoch((n) => n + 1);
@@ -259,6 +292,7 @@ export function usePersistence(user: string, initial: MapRecord) {
         void flush();
       }
     } catch (e) {
+      if (stale()) return;
       if (e instanceof ApiError && [401, 403, 404, 428].includes(e.status)) {
         s.blocked = true;
         setStatus(
@@ -273,38 +307,46 @@ export function usePersistence(user: string, initial: MapRecord) {
   }
   async function latest() {
     const s = state.current;
-    // Keep the unresolved draft as an independent local recovery document.
-    const backup = {
-      ...s.record,
-      id: "local-" + crypto.randomUUID(),
-      storage: "local" as const,
-      readOnly: false,
-      title: s.record.title + " 복구본",
-    };
-    backup.document = await localize(user, backup.document);
-    await putLocal(user, backup);
-    const remote = await api<MapRecord>(`/api/maps/${s.record.id}`);
-    s.record = remote;
-    s.saved = s.seq;
-    s.pending = null;
-    s.conflict = false;
-    s.blocked = false;
-    setRecord(remote);
-    setRemoteEpoch((n) => n + 1);
-    await persist(remote, false);
-    setStatus("saved");
+    if (s.busy) return;
+    s.busy = true;
+    s.epoch++;
+    const seq = s.seq,
+      snapshot = structuredClone(s.record);
+    try {
+      // Keep the unresolved draft as an independent local recovery document.
+      const backup = {
+        ...snapshot,
+        id: "local-" + crypto.randomUUID(),
+        storage: "local" as const,
+        readOnly: false,
+        title: snapshot.title + " 복구본",
+      };
+      backup.document = await localize(user, backup.document);
+      await putLocal(user, backup);
+      const remote = await api<MapRecord>(`/api/maps/${snapshot.id}`);
+      if (!s.alive) return;
+      if (s.seq !== seq || s.record.id !== snapshot.id)
+        throw Error(
+          "최신본을 불러오는 동안 편집한 내용이 있어 현재 작업을 유지했습니다.",
+        );
+      s.record = remote;
+      s.saved = s.seq;
+      s.pending = null;
+      s.conflict = false;
+      s.blocked = false;
+      setRecord(remote);
+      setRemoteEpoch((n) => n + 1);
+      await persist(remote, false);
+      if (s.seq === seq) setStatus("saved");
+      return backup;
+    } finally {
+      s.busy = false;
+    }
   }
   useEffect(() => {
     const s = state.current;
     s.alive = true;
-    get<Draft>(draftKey(user, initial.id))
-      .then((d) => {
-        if (d?.dirty && s.seq === 0 && s.record.storage === "drive") {
-          s.seq = 1;
-          void flush();
-        }
-      })
-      .catch(() => {});
+    void flush();
     const resume = () => {
       if (document.visibilityState === "visible") {
         s.blocked = false;
@@ -329,6 +371,7 @@ export function usePersistence(user: string, initial: MapRecord) {
     void checkRemote();
     return () => {
       s.alive = false;
+      s.epoch++;
       clearTimeout(timer.current);
       clearInterval(continuous);
       clearInterval(remote);

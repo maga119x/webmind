@@ -61,6 +61,8 @@ export type MapRecord = {
   document: MindMap;
   readOnly?: boolean;
   safeCopy?: boolean;
+  // Browser-only hydration marker; never treat an unsynced draft as a clean read.
+  recoveredDraft?: boolean;
 };
 export const uid = () => crypto.randomUUID();
 export function node(

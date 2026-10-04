@@ -337,6 +337,83 @@ it("saves a separate file when conditional behavior is unverified", async () => 
     "original",
   );
 });
+it("ignores Drive internal version changes but still detects content and filename edits", async () => {
+  const original = (
+    await call("POST", "/api/maps", {
+      title: "metadata churn",
+      document: emptyMap("unchanged content"),
+    })
+  ).json();
+  const client = fake.clients.get(owner)!;
+  const raw = original.id.slice(2);
+  // Drive's version includes invisible server-side changes, not only edits.
+  await client.update(raw, { appProperties: { thumbnailProcessed: "yes" } });
+  const fresh = (await call("GET", `/api/maps/${original.id}`)).json();
+  expect(fresh.revision).toBe(original.revision);
+  const saved = await call("PUT", `/api/maps/${original.id}`, {
+    title: original.title,
+    document: emptyMap("my next edit"),
+    revision: original.revision,
+    requestId: randomUUID(),
+  });
+  expect(saved.statusCode, saved.body).toBe(200);
+  await client.update(
+    raw,
+    {},
+    Buffer.from(exportMM(emptyMap("external edit"))),
+  );
+  expect(
+    (
+      await call("PUT", `/api/maps/${original.id}`, {
+        title: original.title,
+        document: emptyMap("do not overwrite"),
+        revision: saved.json().revision,
+        requestId: randomUUID(),
+      })
+    ).statusCode,
+  ).toBe(409);
+  const renamedBase = (await call("GET", `/api/maps/${original.id}`)).json();
+  await client.update(raw, { name: "renamed externally.mm" });
+  expect(
+    (await call("GET", `/api/maps/${original.id}`)).json().revision,
+  ).not.toBe(renamedBase.revision);
+});
+it("upgrades an old version-only dirty draft only by preserving it in a separate file", async () => {
+  const original = (
+    await call("POST", "/api/maps", {
+      title: "old offline draft",
+      document: emptyMap("original"),
+    })
+  ).json();
+  const client = fake.clients.get(owner)!;
+  const raw = original.id.slice(2);
+  const before = await client.stat(raw);
+  const oldRevision = JSON.stringify([before.version, before.etag]);
+  await client.update(
+    raw,
+    {},
+    Buffer.from(exportMM(emptyMap("new remote content"))),
+  );
+  const body = {
+    title: "recovered local work",
+    document: emptyMap("unsaved local content"),
+    revision: oldRevision,
+    requestId: randomUUID(),
+  };
+  // Proven conditional mode must not blindly rebase a stale old-format draft.
+  expect((await call("PUT", `/api/maps/${original.id}`, body)).statusCode).toBe(
+    409,
+  );
+  delete client.files.get(raw)!.meta.etag;
+  const saved = await call("PUT", `/api/maps/${original.id}`, body);
+  expect(saved.statusCode, saved.body).toBe(200);
+  expect(saved.json().safeCopy).toBe(true);
+  expect(saved.json().id).not.toBe(original.id);
+  expect((await client.bytes(raw)).toString()).toContain("new remote content");
+  expect(saved.json().document.nodes[saved.json().document.root].text).toBe(
+    "unsaved local content",
+  );
+});
 it("migrates images and content, verifies roundtrip and preserves readonly legacy source", async () => {
   const id = randomUUID(),
     asset = randomUUID(),

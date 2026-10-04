@@ -18,6 +18,7 @@ export type DriveFile = {
   parents?: string[];
   appProperties?: Record<string, string>;
   etag?: string;
+  md5Checksum?: string;
   size?: string;
 };
 export interface DriveClient {
@@ -39,7 +40,7 @@ export interface DriveClient {
 }
 export const FOLDER = "application/vnd.google-apps.folder";
 const fields =
-  "id,name,mimeType,version,modifiedTime,ownedByMe,trashed,parents,appProperties,size";
+  "id,name,mimeType,version,modifiedTime,ownedByMe,trashed,parents,appProperties,size,md5Checksum";
 export const escapeQuery = (s: string) =>
   s.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 export const propertyQuery = (key: string, value: string) =>
