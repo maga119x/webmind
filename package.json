@@ -9,6 +9,8 @@
     "build": "tsc --noEmit && vite build && esbuild server/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/server/index.js && node scripts/build-scripts.mjs",
     "start": "node dist/server/index.js",
     "test": "vitest run",
+    "docs:check": "node scripts/check-docs.mjs",
+    "docs:test": "node --test tests/docs-check.test.mjs",
     "test:e2e": "playwright test",
     "check": "tsc --noEmit",
     "backup": "tsx scripts/backup.ts",

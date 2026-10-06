@@ -1,4 +1,4 @@
-# Lightsail 배포와 복구
+# 별도 Docker 배포와 복구
 
 기존 Nginx/Node.js 서버에 Docker 없이 분리 배포하는 `webmind.danho.kr` 구성은 [SERVER.md](SERVER.md)를 사용합니다. 아래는 별도 Docker 배포 경로입니다.
 
@@ -8,7 +8,7 @@
 - DNS가 가리키는 도메인과 HTTPS, SMTP 발송 계정.
 - Google 웹 OAuth 클라이언트·Drive/Picker API·운영 콜백 설정. [Google Drive 설정](GOOGLE_DRIVE.md) 참고.
 - 512MB~1GB를 고려한 단일 Node 프로세스와 SQLite 구조. 아래 메모리 제한은 운영 설정이며 **512MB 환경에서 충분하다고 검증된 수치는 아닙니다**.
-- 배포 전 기존 서비스 메모리, 80/443/3000 포트, 서버 CPU 아키텍처(`uname -m`)를 확인합니다. 현재 서버 정보가 제공되지 않았으므로 운영 서버 변경은 수행하지 않았습니다.
+- 배포 전 기존 서비스 메모리, 80/443/3000 포트, 서버 CPU 아키텍처(`uname -m`)를 확인합니다. 현재 실제 서버는 Docker 없이 운영 중이며 [CURRENT_STATUS](CURRENT_STATUS.md)를 따릅니다. 이 Docker 경로는 빌드·구동·512MB 부하 검증이 남아 있습니다.
 
 ## 로컬 빌드와 전달
 

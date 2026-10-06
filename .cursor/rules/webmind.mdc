@@ -1,0 +1,8 @@
+---
+description: Required WebMind documentation and development workflow
+alwaysApply: true
+---
+
+Read and follow [AGENTS.md](../../AGENTS.md) before editing. Start with [docs/README.md](../../docs/README.md), [current status](../../docs/CURRENT_STATUS.md), and [development workflow](../../docs/DEVELOPMENT.md), then task-specific documents.
+
+AGENTS.md is the shared source of project rules. Preserve unsaved drafts, account isolation, and Drive originals. Update relevant documentation with code changes and run `npm run docs:check`. Do not duplicate the project rules in this file.

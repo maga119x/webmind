@@ -4,6 +4,8 @@
 
 ## Google Cloud 설정
 
+현재 운영 프로젝트는 `webmind-danho`(번호 `185453382363`)입니다. 2026-10-04 외부/프로덕션 공개와 브랜딩 게시를 확인했습니다. 홈페이지는 `https://webmind.danho.kr/about.html`, 개인정보처리방침은 `https://webmind.danho.kr/privacy.html`, 승인 도메인은 `danho.kr`, 공개 지원 연락처는 `maga119x@gmail.com`입니다. 현재 값과 미검증 항목은 [CURRENT_STATUS](CURRENT_STATUS.md)를 따릅니다. 아래는 신규 환경/설정 변경 시 재현 절차이며 기존 프로젝트를 다시 만들라는 지시가 아닙니다.
+
 1. Google Cloud 프로젝트에서 **Google Drive API**와 **Google Picker API**를 활성화합니다.
 2. OAuth 동의 화면에 앱 이름, 지원 이메일, 운영 도메인과 개인정보처리방침을 등록합니다. 테스트 상태에서는 실제 검증할 Google 계정을 테스트 사용자로 추가합니다.
 3. **웹 애플리케이션** OAuth 클라이언트를 생성합니다. 개발 JavaScript origin은 `http://localhost:5173`입니다. 아래 두 redirect URI를 정확히 등록합니다.
@@ -118,4 +120,4 @@ npm run test:e2e:drive
 - PC FreeMind에서 이미지 포함 문서를 열고 수정한 뒤 WebMind에서 변경 감지.
 - 실제 운영 origin의 CSP·HTTPS·SMTP, 모바일 실기기와 Lightsail 메모리 제한.
 
-서버 백업은 회원·암호화 토큰·설정·이전 서버 원본을 보호합니다. Drive 본문과 새 첨부는 포함하지 않으므로 Drive 자체의 백업/버전 관리 또는 WebMind ZIP 내보내기를 별도로 사용합니다. [배포·백업·복원](DEPLOYMENT.md)을 참고하세요.
+서버 백업은 회원·암호화 토큰·설정·이전 서버 원본을 보호합니다. Drive 본문과 새 첨부는 포함하지 않으므로 Drive 자체의 백업/버전 관리 또는 WebMind ZIP 내보내기를 별도로 사용합니다. [운영 서버의 배포·백업·복원](SERVER.md)을 참고하세요.

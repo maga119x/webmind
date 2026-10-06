@@ -2,6 +2,8 @@
 
 FreeMind `.mm` 파일을 읽고 편집하는 오픈소스 웹 마인드맵입니다. 한국어·영어 UI, PC·모바일 편집, 로컬 저장과 개인 Google Drive 저장을 제공합니다.
 
+개발을 이어받는 사람과 에이전트는 **[문서 시작점](docs/README.md) → [현재 상태](docs/CURRENT_STATUS.md) → [개발 절차](docs/DEVELOPMENT.md)**를 먼저 읽으세요. 공통 작업 규칙은 [AGENTS.md](AGENTS.md), 참여 절차는 [CONTRIBUTING.md](CONTRIBUTING.md)에 있습니다. 설계·API·운영·장애 대응과 검증 기록을 코드와 함께 관리합니다.
+
 ## 로컬 실행
 
 Node.js 24가 필요합니다.
@@ -16,6 +18,7 @@ npm run dev
 환경을 변경하려면 `.env.example`을 `.env`로 복사합니다. 개발에서는 SMTP가 없으면 `data/mailbox.jsonl`에 인증·재설정 메일 링크를 기록합니다. **http://localhost:5173/api/dev/mailbox** 에서도 확인할 수 있습니다. 이 메일함 API는 production 모드에서는 제공하지 않습니다. 개발 서버는 외부에 공개하지 마세요.
 
 ```sh
+npm run docs:check
 npm run check
 npm run build
 npm test
@@ -44,7 +47,7 @@ npm start
 
 지원하는 내용·서식·메모·아이콘·화살표를 `.mm`로 왕복 변환하며, 알 수 없는 XML 확장 요소를 보존합니다. 위험한 XML과 암호화된 문서는 가져오지 않습니다. 외부/로컬 이미지는 직접 연결해야 합니다. 이미지까지 다른 컴퓨터로 옮길 때는 ZIP 내보내기를 사용하세요.
 
-[기능 대응표와 제한](docs/FEATURES.md), [검증 결과](docs/VALIDATION.md), [운영·백업·복원](docs/DEPLOYMENT.md), [Nginx/systemd 서버 구성](docs/SERVER.md)을 참고하세요.
+[기능 대응표와 제한](docs/FEATURES.md), [검증 결과](docs/VALIDATION.md), [실제 운영·백업·복원](docs/SERVER.md), [별도 Docker 배포](docs/DEPLOYMENT.md)를 참고하세요.
 
 ## 구조
 

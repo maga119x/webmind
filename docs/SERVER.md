@@ -2,6 +2,14 @@
 
 Ubuntu 24.04의 기존 Nginx와 Node.js 24를 사용합니다. WebMind만 전용 사용자와 systemd 서비스로 실행합니다. 다른 사이트의 서비스, DB, 실행 디렉터리와 환경 파일을 재사용하지 않습니다.
 
+현재 릴리스·검증 상태는 [CURRENT_STATUS](CURRENT_STATUS.md)를 먼저 확인합니다. 2026-10-06 읽기 전용 확인 시 `/srv/webmind/current`는 `20261004-42a8167`을 가리켰고 WebMind/Nginx·HTTPS health가 정상이었습니다. 아래 최초 설치는 기존 서버에서 매번 실행할 절차가 아닙니다.
+
+Windows PowerShell 접속 명령입니다. 개인 키는 저장소에 포함하지 않으며, 다른 담당자는 자신의 승인된 키 경로를 사용합니다.
+
+```powershell
+ssh -i "C:\Users\HEYLIN\.ssh\lightsail-ubuntu-ed25519" ubuntu@13.124.18.202
+```
+
 | 항목 | 경로 / 값 |
 |---|---|
 | 서비스 | `webmind.service`, 실행 계정 `webmind` |
@@ -18,7 +26,7 @@ Ubuntu 24.04의 기존 Nginx와 Node.js 24를 사용합니다. WebMind만 전용
 
 서비스는 메모리 soft limit 320MiB / hard limit 384MiB, CPU 50%, Node old-space 192MiB를 사용합니다. 코드 디렉터리는 서비스에서 읽기 전용이며 `/var/lib/webmind`에만 데이터를 씁니다. 로그는 기존 journald/Nginx 로그 순환 정책을 사용합니다. WebMind Nginx 접근 로그는 OAuth 코드가 있는 쿼리 문자열을 기록하지 않습니다.
 
-초기 배포는 `EMAIL_AUTH_ENABLED=false`로 이메일 가입/로그인/재설정을 차단합니다. 로컬 편집·저장·다운로드는 사용할 수 있습니다. SMTP 준비 후 환경 파일에 SMTP 값과 발신 주소를 넣고 `EMAIL_AUTH_ENABLED=true`로 변경한 뒤 WebMind만 재시작합니다. Google 인증은 별도 설정이며 이메일 로그인 활성화 여부와 독립적입니다.
+초기 2026-10-02 배포는 SMTP 미준비로 `EMAIL_AUTH_ENABLED=false`였습니다. 현재는 SMTP 연결 후 `true`로 운영합니다. 새 환경에 SMTP가 없을 때만 이메일 인증을 비활성화하며, Google 인증은 이메일 로그인 활성화 여부와 독립적입니다.
 
 ## Resend SMTP
 
@@ -91,6 +99,38 @@ https://webmind.danho.kr/api/drive/callback
 
 ## 배포 확인과 롤백
 
+일반 업데이트는 로컬에서 검증·빌드하고 새 릴리스를 추가합니다. `git status`가 깨끗한 커밋의 빌드를 사용하고 [개발 검사](DEVELOPMENT.md)를 먼저 수행합니다. 아래 PowerShell은 비밀값·데이터·Windows 의존성을 제외한 산출물만 전달합니다.
+
+```powershell
+$releaseName = "{0}-{1}" -f (Get-Date -Format yyyyMMdd-HHmmss), (git rev-parse --short HEAD)
+$archivePath = Join-Path $env:TEMP "$releaseName.tar.gz"
+npm run build
+if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
+tar -czf $archivePath dist package.json package-lock.json LICENSE THIRD_PARTY_NOTICES.md deploy
+if ($LASTEXITCODE -ne 0) { throw 'Archive failed' }
+scp -i "C:\Users\HEYLIN\.ssh\lightsail-ubuntu-ed25519" $archivePath "ubuntu@13.124.18.202:/tmp/"
+if ($LASTEXITCODE -ne 0) { throw 'Upload failed' }
+Write-Output $releaseName
+```
+
+서버에 SSH로 접속한 뒤 출력된 릴리스명을 넣습니다. 배포 전 현재 링크·자원·백업과 DB 변경 호환성을 확인합니다. 기존 디렉터리를 덮어쓰지 않습니다.
+
+```sh
+set -euo pipefail
+release_name='<앞에서 출력된 릴리스명>'
+[[ "$release_name" =~ ^[0-9]{8}-[0-9]{6}-[a-f0-9]+$ ]]
+release_dir="/srv/webmind/releases/$release_name"
+test ! -e "$release_dir"
+sudo install -d -o ubuntu -g ubuntu -m 755 "$release_dir"
+tar -xzf "/tmp/$release_name.tar.gz" -C "$release_dir"
+cd "$release_dir"
+npm ci --omit=dev --no-audit --no-fund
+sudo chown -R root:root "$release_dir"
+sudo bash "$release_dir/deploy/activate.sh" "$release_dir"
+```
+
+이 경로는 앱 산출물만 전환합니다. unit/Nginx 설정이 바뀐 작업은 해당 diff를 별도 검토해 WebMind 파일만 적용하고 `daemon-reload` 또는 `nginx -t` 후 reload합니다. 기존 Google/SMTP/AUTH_SECRET을 다시 생성하지 않습니다. 신규 DB 마이그레이션이 있다면 활성화 전에 일관된 백업을 확보합니다.
+
 ```sh
 systemctl status webmind --no-pager
 curl --fail https://webmind.danho.kr/api/health
@@ -112,4 +152,24 @@ sudo -u webmind env DATA_DIR=/var/lib/webmind \
 sudo systemctl start webmind
 ```
 
-먼저 `/var/lib/webmind-backups`를 `webmind:webmind`, 0700으로 생성합니다. 백업 실패 시에도 WebMind를 재시작하고 원인을 확인합니다. 검증된 백업은 별도 장치로 복사합니다. 복원 명령은 [DEPLOYMENT.md](DEPLOYMENT.md)를 참고하세요.
+먼저 `/var/lib/webmind-backups`를 `webmind:webmind`, 0700으로 생성합니다. 백업 실패 시에도 WebMind를 재시작하고 원인을 확인합니다. 검증된 백업은 별도 장치로 복사합니다. 호스트 복원은 아래 절차를 따릅니다.
+
+## 호스트 방식 복원
+
+운영 데이터를 덮어쓰지 않는 복원 검증 예시입니다. 새 이름을 선택하고 기존 경로가 아닌지 확인합니다. 원본 백업과 AUTH_SECRET/환경 파일의 별도 보관본도 확인합니다.
+
+```sh
+sudo install -d -o webmind -g webmind -m 700 /var/lib/webmind-restored
+sudo -u webmind /usr/bin/node /srv/webmind/current/dist/scripts/restore.js \
+  /var/lib/webmind-backups/<백업명> /var/lib/webmind-restored
+```
+
+restore는 대상이 비어 있지 않으면 거절하며 SHA-256 manifest와 SQLite quick_check를 검사합니다. **이 명령만으로 운영 경로가 바뀌지는 않습니다.** 실제 전환 시 다음 순서를 따릅니다.
+
+1. WebMind를 중단하고 현재 환경 파일·현재 데이터 경로를 보관합니다.
+2. `/etc/webmind/webmind.env`의 DATA_DIR을 검증된 복원 경로로 변경합니다. AUTH_SECRET 및 다른 설정을 유지합니다.
+3. `sudo systemctl edit webmind`의 `[Service]`에 `ReadWritePaths=/var/lib/webmind-restored`를 추가합니다. 기본 unit은 `/var/lib/webmind`만 쓰도록 제한하므로 새 경로도 허용해야 합니다. 소유자와 0700 권한을 확인합니다.
+4. `sudo systemctl daemon-reload`, `sudo systemctl start webmind` 후 health·인증·이전 문서/첨부를 확인합니다. 실패하면 원래 DATA_DIR과 override 설정으로 되돌리고 재시작합니다.
+5. 성공 확인 전 기존 DB/첨부와 백업을 삭제하지 않습니다. 복원 DB 이후의 Drive 변경·브라우저 초안은 별도 데이터이므로 충돌 처리와 사용자 복구를 확인합니다.
+
+Docker 볼륨 복원은 [DEPLOYMENT](DEPLOYMENT.md)의 별도 절차입니다. 복구 중 WebMind 밖의 서비스는 중단하지 않습니다.

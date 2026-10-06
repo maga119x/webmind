@@ -1,7 +1,21 @@
 name: Verify WebMind
 on: [push, pull_request]
 jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm run docs:test
+      - run: npm run docs:check
+        env:
+          DOCS_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
   test:
+    needs: docs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
